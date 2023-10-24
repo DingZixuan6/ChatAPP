@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Room</title>
+</head>
+<body>
+    <h1>Welcome to the Chat Room, <span id="username"></span>!</h1>
+    <ul id="messages"></ul>
+    <!-- <form id="form" action="/api/messages" method="post"> -->
+        <input type="text" id="message" name="message" autocomplete="off" />
+        <button id="submit_btn">Send</button>
+    <!-- </form> -->
+
+    <script src="socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        const username = decodeURIComponent(new URLSearchParams(window.location.search).get('username'));
+        document.getElementById('username').innerText = username;
+
+        document.getElementById('submit_btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            const messageInput = document.querySelector('#message');
+            const message = messageInput.value.trim();
+            if (message) {
+                socket.emit('chat message', { username, message });
+                messageInput.value = '';
+            }
+        });
+
+        socket.on('chat message', function(message) {
+            appendMessage(message);
+        });
+
+        socket.on('delete message', function(deletedMsg) {
+            const deletedMessageElement = document.getElementById(deletedMsg.id);
+            if (deletedMessageElement) {
+                deletedMessageElement.remove();
+            }
+        });
+
+        async function appendMessage(message) {
+            const ul = document.querySelector('#messages');
+            const li = document.createElement('li');
+            li.setAttribute('id', message.id);
+            li.appendChild(document.createTextNode(`${message.username}: ${message.message}`));
+            ul.appendChild(li);
+        }
+
+        // Fetch existing messages on page load
+        async function fetchMessages() {
+            const response = await fetch('/api/messages');
+            const messages = await response.json();
+            messages.forEach(message => {
+                appendMessage(message);
+            });
+        }
+
+        // Fetch existing messages
+        fetchMessages();
+    </script>
+</body>
+</html>

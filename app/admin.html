@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+</head>
+
+<body>
+    <h1>Admin Panel</h1>
+    <ul id="messages"></ul>
+    <label for="messageId">Enter Message ID to Delete:</label>
+    <div>
+        <input type="text" id="messageId" name="messageId" />
+        <button id="deleteBtn">Delete Message</button>
+    </div>
+    <div>
+        <input type="text" id="message_sender" />
+        <button id="sendBtn">Send Message</button>
+    </div>
+    <script src="socket.io.min.js"></script>
+    <script>
+        const socket = io();
+
+        document.getElementById('deleteBtn').addEventListener('click', async function () {
+            const messageId = document.getElementById('messageId').value;
+            if (messageId.trim() !== '') {
+                const response = await fetch(`/api/messages/${messageId}`, { method: 'DELETE' });
+                const data = await response.json();
+                if (data.success) {
+                    const messageList = document.getElementById('messages');
+                    const deletedMessageElement = document.getElementById(messageId);
+                    if (deletedMessageElement) {
+                        deletedMessageElement.remove();
+                    }
+                } else {
+                    console.error(data.error);
+                }
+            } else {
+                console.error('Please enter a valid Message ID');
+            }
+        });
+
+        document.getElementById('sendBtn').addEventListener('click', function (e) {
+            e.preventDefault();
+            const messageInput = document.getElementById('message_sender');
+            const message = messageInput.value.trim();
+            if (message) {
+                username = 'admin'
+                socket.emit('chat message', { username, message });
+                messageInput.value = '';
+            }
+        });
+
+        socket.on('chat message', function (message) {
+            appendMessage(message);
+        });
+
+        socket.on('delete message', function (deletedMsg) {
+            const ul = document.getElementById('messages');
+            const li = document.createElement('li');
+            li.appendChild(document.createTextNode(`ID: ${deletedMsg.id} - Deleted: ${deletedMsg.username}'s message: ${deletedMsg.message}`));
+            li.setAttribute('id', deletedMsg.id);
+            ul.appendChild(li);
+        });
+
+
+
+        async function appendMessage(message) {
+            const ul = document.getElementById('messages');
+            const li = document.createElement('li');
+            li.setAttribute('id', message.id);
+            li.appendChild(document.createTextNode(`ID: ${message.id} - ${message.username}: ${message.message}`));
+            ul.appendChild(li);
+        }
+
+        // Fetch existing messages on page load
+        async function fetchMessages() {
+            const response = await fetch('/api/messages');
+            const messages = await response.json();
+            const messageList = document.getElementById('messages');
+            messages.forEach(message => {
+                const li = document.createElement('li');
+                li.setAttribute('id', message.id);
+                li.appendChild(document.createTextNode(`ID: ${message.id} - ${message.username}: ${message.message}`));
+                messageList.appendChild(li);
+            });
+        }
+
+        // Fetch existing messages
+        fetchMessages();
+    </script>
+</body>
+
+</html>
